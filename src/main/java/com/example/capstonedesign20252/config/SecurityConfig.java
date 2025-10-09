@@ -27,10 +27,11 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
-        .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 추가
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/api/auth/**").permitAll()
+            .requestMatchers("/**").permitAll()
             .anyRequest().authenticated()
         )
         .sessionManagement(session -> session
@@ -42,15 +43,22 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(Arrays.asList(
+    configuration.setAllowedOriginPatterns(Arrays.asList(
         "https://autopivot-fee-management-fe.vercel.app",
         "http://localhost:3000",
         "http://localhost:5173"
     ));
+
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
     configuration.setAllowedHeaders(Arrays.asList("*"));
     configuration.setAllowCredentials(true);
     configuration.setMaxAge(3600L);
+
+    configuration.setExposedHeaders(Arrays.asList(
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Credentials"
+    ));
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
