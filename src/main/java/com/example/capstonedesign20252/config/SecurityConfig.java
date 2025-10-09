@@ -10,8 +10,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
+
 import java.util.Arrays;
 
 @Configuration
@@ -24,10 +25,8 @@ public class SecurityConfig {
   }
 
   @Bean
-  public CorsFilter corsFilter() {
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+  public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-
     config.setAllowCredentials(true);
     config.setAllowedOriginPatterns(Arrays.asList(
         "https://autopivot-fee-management-fe.vercel.app",
@@ -36,29 +35,22 @@ public class SecurityConfig {
     ));
     config.setAllowedHeaders(Arrays.asList("*"));
     config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
-    config.setExposedHeaders(Arrays.asList(
-        "Authorization",
-        "Content-Type",
-        "Access-Control-Allow-Origin",
-        "Access-Control-Allow-Credentials"
-    ));
+    config.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
     config.setMaxAge(3600L);
 
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
-    return new CorsFilter(source);
+    return source;
   }
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
-        .cors(AbstractHttpConfigurer::disable)
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .csrf(AbstractHttpConfigurer::disable)
-        .authorizeHttpRequests(auth -> auth
-            .anyRequest().permitAll()
-        )
-        .sessionManagement(session -> session
-            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-        );
+        .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
     return http.build();
   }
 }
