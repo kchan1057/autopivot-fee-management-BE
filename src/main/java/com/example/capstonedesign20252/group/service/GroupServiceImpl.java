@@ -52,6 +52,14 @@ public class GroupServiceImpl implements GroupService {
   }
 
   @Override
+  public List<GroupResponseDto> getUserGroups(Long userId) {
+    return groupRepository.findByUserId(userId)
+        .stream()
+        .map(this::toDto)
+        .toList();
+  }
+
+  @Override
   @Transactional
   public void deleteGroup(Long groupId) {
     groupRepository.deleteById(groupId);
