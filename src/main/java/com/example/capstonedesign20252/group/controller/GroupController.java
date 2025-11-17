@@ -7,6 +7,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,6 +40,14 @@ public class GroupController {
   @GetMapping
   public ResponseEntity<List<GroupResponseDto>> getAllGroups(){
     return ResponseEntity.ok(groupService.getAllGroups());
+  }
+
+  @GetMapping("/my")
+  public ResponseEntity<List<GroupResponseDto>> getMyGroups(
+      @AuthenticationPrincipal UserDetails userDetails
+  ){
+    Long userId = Long.parseLong(userDetails.getUsername());
+    return ResponseEntity.ok(groupService.getUserGroups(userId));
   }
 
   @DeleteMapping("/{groupId}")
