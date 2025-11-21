@@ -1,6 +1,5 @@
 package com.example.capstonedesign20252.config;
 
-import com.example.capstonedesign20252.auth.jwt.JwtAuthenticationFilter;
 import com.example.capstonedesign20252.auth.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

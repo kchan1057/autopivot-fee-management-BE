@@ -82,7 +82,7 @@ public class DashboardServiceImpl implements DashboardService {
                                  .limit(10)
                                  .map(p -> DashboardResponseDto.RecentPaymentDto.builder()
                                  .paymentId(p.getId())
-                                 .memberName(p.getGroupMember().getUser().getName())
+                                 .memberName(p.getGroupMember().getName())
                                  .amount(p.getAmount())
                                  .paidAt(p.getPaidAt())
                                  .status(p.getStatus())

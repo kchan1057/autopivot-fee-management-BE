@@ -2,7 +2,6 @@ package com.example.capstonedesign20252.groupMember.domain;
 
 import com.example.capstonedesign20252.common.BaseEntity;
 import com.example.capstonedesign20252.group.domain.Group;
-import com.example.capstonedesign20252.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -29,17 +28,26 @@ public class GroupMember extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   private Group group;
 
-  @JoinColumn(name = "user_id", nullable = false)
-  @ManyToOne(fetch = FetchType.LAZY)
-  private User user;
+  // 🔥 User 참조 제거! 멤버 정보를 직접 저장
+  @Column(name = "name", nullable = false)
+  private String name;
 
+  @Column(name = "email")
+  private String email;
+
+  @Column(name = "phone")
+  private String phone;
+
+  // 리더(그룹 생성자)인지 구분
   @Column(name = "is_admin", nullable = false)
   private Boolean isAdmin;
 
   @Builder
-  public GroupMember(Group group, User user, Boolean isAdmin, Integer payment, Boolean isPaid){
+  public GroupMember(Group group, String name, String email, String phone, Boolean isAdmin){
     this.group = group;
-    this.user = user;
+    this.name = name;
+    this.email = email;
+    this.phone = phone;
     this.isAdmin = isAdmin != null ? isAdmin : false;
   }
 }

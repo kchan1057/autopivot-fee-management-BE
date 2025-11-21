@@ -1,0 +1,141 @@
+package com.example.capstonedesign20252.chatBot.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.util.DefaultUriBuilderFactory;
+
+import java.util.List;
+import java.util.Map;
+
+@Slf4j
+@Service
+public class GeminiService {
+
+  @Value("${gemini.api-key}")
+  private String apiKey;
+
+  private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+
+  // 다시 표준 모델명으로 원복 (인코딩 문제만 해결하면 이게 맞습니다)
+  private static final String MODEL_NAME = "gemini-2.5-flash";
+
+  private final WebClient webClient;
+  private final ObjectMapper objectMapper;
+
+  public GeminiService() {
+    // 🚨 [핵심 해결] URL 인코딩을 아예 꺼버립니다. (콜론 : 변조 방지)
+    DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(BASE_URL);
+    factory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.NONE);
+
+    this.webClient = WebClient.builder()
+                              .uriBuilderFactory(factory) // 설정 적용
+                              .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+                              .build();
+    this.objectMapper = new ObjectMapper();
+  }
+
+  @PostConstruct
+  public void init() {
+    log.info("--------------------------------------------------");
+    log.info("🚀 Gemini 서비스 초기화 및 모델 확인 시작");
+    checkAvailableModels();
+    log.info("--------------------------------------------------");
+  }
+
+  // 사용 가능한 모델을 싹 다 긁어와서 보여줍니다.
+  public void checkAvailableModels() {
+    try {
+      if (apiKey == null || apiKey.trim().isEmpty() || apiKey.startsWith("여기에")) {
+        log.warn("⚠️ API 키 확인 필요: application.properties를 확인하세요.");
+        return;
+      }
+
+      String listUrl = BASE_URL + "/models?key=" + apiKey.trim();
+
+      // 인코딩 없는 순수 문자열 URL 사용
+      String response = webClient.get()
+                                 .uri(listUrl)
+                                 .retrieve()
+                                 .bodyToMono(String.class)
+                                 .block();
+
+      log.info("✅ API 연결 성공! (키 검증 완료)");
+
+      // 모델 목록 파싱해서 이름만 깔끔하게 출력
+      JsonNode root = objectMapper.readTree(response);
+      if (root.has("models")) {
+        log.info("📋 [사용 가능한 모델 목록]");
+        for (JsonNode model : root.get("models")) {
+          String name = model.get("name").asText();
+          // generateContent를 지원하는 모델만 표시
+          if (model.has("supportedGenerationMethods") &&
+              model.get("supportedGenerationMethods").toString().contains("generateContent")) {
+            log.info("  👉 {}", name); // 이 이름들 중 하나를 써야 합니다.
+          }
+        }
+      }
+
+    } catch (Exception e) {
+      log.error("❌ 초기화 중 오류 발생", e);
+    }
+  }
+
+  public String chat(String systemPrompt, String userMessage) {
+    try {
+      String cleanKey = apiKey.trim();
+
+      // 1. URL 생성 (인코딩 모드가 NONE이라 문자열 그대로 날아갑니다)
+      String fullUrl = BASE_URL + "/models/" + MODEL_NAME + ":generateContent?key=" + cleanKey;
+
+      log.info("🤖 Gemini 요청 시작: {}", MODEL_NAME);
+
+      // 2. 프롬프트 구성
+      String fullPrompt = (systemPrompt == null || systemPrompt.isEmpty())
+          ? userMessage
+          : systemPrompt + "\n\nUser Query: " + userMessage;
+
+      Map<String, Object> requestBody = Map.of(
+          "contents", List.of(
+              Map.of("parts", List.of(Map.of("text", fullPrompt)))
+          ),
+          "generationConfig", Map.of(
+              "temperature", 0.9,
+              "maxOutputTokens", 1000
+          )
+      );
+
+      // 3. 요청 전송
+      String response = webClient.post()
+                                 .uri(fullUrl) // URI 객체 대신 문자열 그대로 넣기
+                                 .header("Content-Type", "application/json")
+                                 .bodyValue(requestBody)
+                                 .retrieve()
+                                 .bodyToMono(String.class)
+                                 .block();
+
+      // 4. 응답 파싱
+      JsonNode jsonNode = objectMapper.readTree(response);
+      if (jsonNode.has("candidates") && !jsonNode.get("candidates").isEmpty()) {
+        return jsonNode.get("candidates").get(0)
+                       .get("content").get("parts").get(0)
+                       .get("text").asText();
+      } else {
+        return "❌ AI 응답이 비어있습니다.";
+      }
+
+    } catch (WebClientResponseException e) {
+      log.error("❌ HTTP 오류 ({}): {}", e.getStatusCode(), e.getStatusText());
+      log.error("반환된 에러 메시지: {}", e.getResponseBodyAsString());
+      return "오류 발생: " + e.getStatusCode();
+    } catch (Exception e) {
+      log.error("❌ 시스템 오류", e);
+      return "시스템 오류: " + e.getMessage();
+    }
+  }
+}
