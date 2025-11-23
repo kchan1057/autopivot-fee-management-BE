@@ -30,8 +30,8 @@ public class User extends BaseEntity {
   @Column(unique = true, nullable = false)
   private String email;
 
-  @Column
-  private String password;
+  @Column(name = "phone")
+  private String phone;
 
   @Column(name = "kakao_id", unique = true)
   private String kakaoId;
@@ -44,22 +44,13 @@ public class User extends BaseEntity {
   private LoginType loginType;
 
   @Builder
-  public User(String name, String email, String password, String kakaoId, String profileImage, LoginType loginType){
+  public User(String name, String email, String phone, String kakaoId, String profileImage, LoginType loginType){
     this.name = name;
     this.email = email;
-    this.password = password;
+    this.phone = phone;
     this.kakaoId = kakaoId;
     this.profileImage = profileImage;
     this.loginType = loginType;
-  }
-
-  public static User createGeneralUser(String name, String email, String encodedPassword){
-    return User.builder()
-        .name(name)
-        .email(email)
-        .password(encodedPassword)
-        .loginType(LoginType.GENERAL)
-        .build();
   }
 
   public static User createKakaoUser(String name, String email, String kakaoId, String profileImage){
