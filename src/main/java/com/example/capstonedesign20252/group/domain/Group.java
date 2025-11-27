@@ -1,7 +1,9 @@
 package com.example.capstonedesign20252.group.domain;
 
 import com.example.capstonedesign20252.group.dto.UpdateRequestGroupDto;
+import com.example.capstonedesign20252.groupMember.domain.GroupMember;
 import com.example.capstonedesign20252.user.domain.User;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,7 +14,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -47,6 +52,9 @@ public class Group {
 
   @Column(name = "fee", nullable = false)
   private Integer fee;
+
+  @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<GroupMember> groupMembers = new ArrayList<>();
 
   @Builder
   public Group(User user, String groupName, String accountName, String description, GroupCategory groupCategory, Integer fee){

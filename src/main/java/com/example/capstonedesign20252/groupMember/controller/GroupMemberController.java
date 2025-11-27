@@ -2,6 +2,10 @@ package com.example.capstonedesign20252.groupMember.controller;
 
 import com.example.capstonedesign20252.excel.service.ExcelParserService;
 import com.example.capstonedesign20252.excel.dto.MemberDataDto;
+import com.example.capstonedesign20252.groupMember.domain.GroupMember;
+import com.example.capstonedesign20252.groupMember.dto.AddGroupMemberDto;
+import com.example.capstonedesign20252.groupMember.dto.MemberResponseDto;
+import com.example.capstonedesign20252.groupMember.dto.UpdateGroupMemberDto;
 import com.example.capstonedesign20252.groupMember.service.GroupMemberService;
 import java.io.IOException;
 import java.util.List;
@@ -22,27 +26,56 @@ public class GroupMemberController {
   private final ExcelParserService excelParserService;
   private final GroupMemberService groupMemberService;
 
-  /**
-   * 엑셀 파일로 멤버 일괄 추가
-   * POST /api/groups/{groupId}/members/upload
-   */
+  @GetMapping("/{groupId}/members")
+  public ResponseEntity<List<MemberResponseDto>> getGroupMembers(
+      @PathVariable Long groupId
+  ){
+    List<GroupMember> members = groupMemberService.getGroupMembers(groupId);
+    List<MemberResponseDto> response = members.stream()
+                                              .map(MemberResponseDto::from)
+                                              .toList();
+    return ResponseEntity.ok(response);
+  }
+
+  @PostMapping("/{groupId}/members")
+  public ResponseEntity<MemberResponseDto> addGroupMember(
+      @PathVariable Long groupId,
+      @RequestBody AddGroupMemberDto addGroupMemberDto
+  ){
+    return ResponseEntity.ok(groupMemberService.addGroupMember(groupId, addGroupMemberDto));
+  }
+
+  @PutMapping("/{groupId}/members/{memberId}")
+  public ResponseEntity<MemberResponseDto> updateGroupMember(
+      @PathVariable Long groupId,
+      @PathVariable Long memberId,
+      @RequestBody UpdateGroupMemberDto updateGroupMemberDto
+  ){
+    return ResponseEntity.ok(groupMemberService.updateGroupMember(groupId, memberId, updateGroupMemberDto));
+  }
+
+  @DeleteMapping("/{groupId}/members/{memberId}")
+  public ResponseEntity<Void> deleteGroupMember(
+      @PathVariable Long groupId,
+      @PathVariable Long memberId,
+      @AuthenticationPrincipal UserDetails userDetails
+  ){
+    Long userId = Long.parseLong(userDetails.getUsername());
+    groupMemberService.removeMember(groupId, memberId, userId);
+    return ResponseEntity.noContent().build();
+  }
+
   @PostMapping("/{groupId}/members/upload")
   public ResponseEntity<?> uploadMembers(
       @PathVariable Long groupId,
       @RequestParam("file") MultipartFile file,
       @AuthenticationPrincipal UserDetails userDetails) {
 
-    // UserDetails에서 userId 추출
     Long userId = Long.parseLong(userDetails.getUsername());
-
-    log.info("그룹 {} 멤버 업로드 시작 - 파일: {}, 요청자: {}",
-        groupId, file.getOriginalFilename(), userId);
+    log.info("그룹 {} 멤버 업로드 시작 - 파일: {}, 요청자: {}", groupId, file.getOriginalFilename(), userId);
 
     try {
-      // 1. 권한 확인 (그룹 리더인지)
       groupMemberService.validateGroupLeader(groupId, userId);
-
-      // 2. 엑셀 파일 파싱
       List<MemberDataDto> memberDataList = excelParserService.parseExcelFile(file);
 
       if (memberDataList.isEmpty()) {
@@ -50,9 +83,7 @@ public class GroupMemberController {
                              .body(new ErrorResponse("유효한 멤버 데이터가 없습니다."));
       }
 
-      // 3. 멤버 추가 (User 생성 없이 GroupMember에만 저장)
       int addedCount = groupMemberService.addMembersFromExcel(groupId, memberDataList);
-
       log.info("그룹 {} 멤버 {}명 추가 완료", groupId, addedCount);
 
       return ResponseEntity.ok(new MemberUploadResponse(
@@ -75,7 +106,6 @@ public class GroupMemberController {
     }
   }
 
-  // Response DTOs
   record MemberUploadResponse(int count, String message) {}
   record ErrorResponse(String message) {}
 }

@@ -4,10 +4,15 @@ import com.example.capstonedesign20252.excel.dto.MemberDataDto;
 import com.example.capstonedesign20252.group.domain.Group;
 import com.example.capstonedesign20252.group.domain.GroupErrorCode;
 import com.example.capstonedesign20252.group.domain.GroupException;
+import com.example.capstonedesign20252.group.dto.GroupResponseDto;
+import com.example.capstonedesign20252.group.service.GroupService;
 import com.example.capstonedesign20252.groupMember.domain.GroupMember;
 import com.example.capstonedesign20252.group.repository.GroupRepository;
 import com.example.capstonedesign20252.groupMember.domain.GroupMemberErrorCode;
 import com.example.capstonedesign20252.groupMember.domain.GroupMemberException;
+import com.example.capstonedesign20252.groupMember.dto.AddGroupMemberDto;
+import com.example.capstonedesign20252.groupMember.dto.MemberResponseDto;
+import com.example.capstonedesign20252.groupMember.dto.UpdateGroupMemberDto;
 import com.example.capstonedesign20252.groupMember.repository.GroupMemberRepository;
 import com.example.capstonedesign20252.user.repository.UserRepository;
 import java.util.List;
@@ -22,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GroupMemberService {
 
+  private final GroupService groupService;
   private final GroupRepository groupRepository;
   private final GroupMemberRepository groupMemberRepository;
 
@@ -29,7 +35,6 @@ public class GroupMemberService {
     Group group = groupRepository.findById(groupId)
                                  .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
-    // Group의 생성자(user_id)와 요청자가 같은지 확인
     if (!group.getUser().getId().equals(userId)) {
       throw new GroupMemberException(GroupMemberErrorCode.NOT_GROUP_ADMIN);
     }
@@ -41,10 +46,8 @@ public class GroupMemberService {
                                  .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
     int addedCount = 0;
-
     for (MemberDataDto data : memberDataList) {
       try {
-        // 멤버 중복 확인.
         boolean alreadyExists = false;
 
         if (data.email() != null && !data.email().isEmpty()) {
@@ -100,7 +103,28 @@ public class GroupMemberService {
     if (member.getIsAdmin()) {
       throw new GroupMemberException(GroupMemberErrorCode.NOT_DELETE_ADMIN);
     }
-
     groupMemberRepository.delete(member);
+  }
+
+  @Transactional
+  public MemberResponseDto addGroupMember(Long groupId, AddGroupMemberDto addGroupMemberDto){
+    Group group = groupService.findByGroupId(groupId);
+    GroupMember newMember = GroupMember.builder()
+        .name(addGroupMemberDto.name())
+        .email(addGroupMemberDto.email())
+        .phone(addGroupMemberDto.phone())
+        .build();
+
+    return MemberResponseDto.from(groupMemberRepository.save(newMember));
+  }
+
+  @Transactional
+  public MemberResponseDto updateGroupMember(Long groupId, Long memberId, UpdateGroupMemberDto updateGroupMemberDto){
+    Group group = groupService.findByGroupId(groupId);
+    GroupMember member = groupMemberRepository.findById(memberId)
+        .orElseThrow(() -> new IllegalArgumentException("해당 멤버가 존재하지 않습니다."));
+
+    member.updateGroupMember(updateGroupMemberDto);
+    return MemberResponseDto.from(member);
   }
 }
