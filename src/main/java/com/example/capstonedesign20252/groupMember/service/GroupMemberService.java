@@ -110,6 +110,7 @@ public class GroupMemberService {
   public MemberResponseDto addGroupMember(Long groupId, AddGroupMemberDto addGroupMemberDto){
     Group group = groupService.findByGroupId(groupId);
     GroupMember newMember = GroupMember.builder()
+        .group(group)
         .name(addGroupMemberDto.name())
         .email(addGroupMemberDto.email())
         .phone(addGroupMemberDto.phone())
