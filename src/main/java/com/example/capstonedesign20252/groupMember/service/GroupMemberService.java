@@ -13,7 +13,13 @@ import com.example.capstonedesign20252.groupMember.dto.AddGroupMemberDto;
 import com.example.capstonedesign20252.groupMember.dto.MemberResponseDto;
 import com.example.capstonedesign20252.groupMember.dto.UpdateGroupMemberDto;
 import com.example.capstonedesign20252.groupMember.repository.GroupMemberRepository;
+import com.example.capstonedesign20252.payment.domain.Payment;
+import com.example.capstonedesign20252.payment.repository.PaymentRepository;
+import com.example.capstonedesign20252.paymentCycle.domain.PaymentCycle;
+import com.example.capstonedesign20252.paymentCycle.repository.PaymentCycleRepository;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +34,8 @@ public class GroupMemberService {
   private final GroupService groupService;
   private final GroupRepository groupRepository;
   private final GroupMemberRepository groupMemberRepository;
+  private final PaymentCycleRepository paymentCycleRepository;
+  private final PaymentRepository paymentRepository;
 
   private boolean isDuplicateMember(Long groupId, String email, String phone, Long excludeMemberId) {
     if (email != null && !email.isEmpty()) {
@@ -44,8 +52,7 @@ public class GroupMemberService {
 
     if (phone != null && !phone.isEmpty()) {
       if (excludeMemberId != null) {
-        return groupMemberRepository.existsByGroupIdAndPhoneAndIdNot(groupId, phone,
-            excludeMemberId);
+        return groupMemberRepository.existsByGroupIdAndPhoneAndIdNot(groupId, phone, excludeMemberId);
       } else {
         return groupMemberRepository.existsByGroupIdAndPhone(groupId, phone);
       }
@@ -59,6 +66,27 @@ public class GroupMemberService {
 
     if (!group.getUser().getId().equals(userId)) {
       throw new GroupMemberException(GroupMemberErrorCode.NOT_GROUP_ADMIN);
+    }
+  }
+
+  private void createPaymentForActiveCycle(Group group, GroupMember member) {
+    Optional<PaymentCycle> activeCycleOpt = paymentCycleRepository
+        .findByGroupIdAndStatus(group.getId(), "ACTIVE");
+
+    if (activeCycleOpt.isPresent()) {
+      PaymentCycle cycle = activeCycleOpt.get();
+
+      Payment payment = Payment.builder()
+                               .group(group)
+                               .groupMember(member)
+                               .amount(new BigDecimal(group.getFee()))
+                               .dueDate(cycle.getDueDate())
+                               .paymentPeriod(cycle.getPeriod())
+                               .build();
+      paymentRepository.save(payment);
+
+      log.info("신규 멤버 Payment 자동 생성 - memberId: {}, period: {}, amount: {}",
+          member.getId(), cycle.getPeriod(), group.getFee());
     }
   }
 
@@ -84,6 +112,8 @@ public class GroupMemberService {
                                         .build();
 
         groupMemberRepository.save(member);
+        createPaymentForActiveCycle(group, member);
+
         addedCount++;
         log.debug("멤버 추가: {} ({})", data.name(), data.email());
 
@@ -133,7 +163,10 @@ public class GroupMemberService {
                                        .phone(dto.phone())
                                        .build();
 
-    return MemberResponseDto.from(groupMemberRepository.save(newMember));
+    GroupMember savedMember = groupMemberRepository.save(newMember);
+    createPaymentForActiveCycle(group, savedMember);
+
+    return MemberResponseDto.from(savedMember);
   }
 
   @Transactional
@@ -142,7 +175,6 @@ public class GroupMemberService {
 
     GroupMember member = groupMemberRepository.findById(memberId)
                                               .orElseThrow(() -> new GroupMemberException(GroupMemberErrorCode.MEMBER_NOT_FOUND));
-
 
     if (isDuplicateMember(groupId, dto.email(), dto.phone(), memberId)) {
       throw new GroupMemberException(GroupMemberErrorCode.DUPLICATE_GROUP_MEMBER);

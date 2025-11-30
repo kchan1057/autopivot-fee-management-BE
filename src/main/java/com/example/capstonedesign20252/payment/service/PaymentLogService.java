@@ -4,5 +4,5 @@ import com.example.capstonedesign20252.payment.domain.PaymentLog;
 import com.example.capstonedesign20252.payment.dto.PaymentRequestDto;
 
 public interface PaymentLogService {
-  PaymentLog savePaymentLog(PaymentRequestDto paymentRequestDto);
+  void savePaymentLog(PaymentRequestDto paymentRequestDto);
 }

@@ -24,7 +24,7 @@ public class ChatbotService {
   private final GroupMemberRepository groupMemberRepository;
   private final GroupService groupService;
   private static final String SYSTEM_PROMPT = """
-            당신은 '오토피봇(Auto Fee Bot)' 동아리 회비 관리 시스템의 AI 어시스턴트 총총이입니다.
+            당신은 '오토피봇(Auto Fee Bot)' 동아리 회비 관리 시스템의 AI 도우미 두레입니다.
             
             주요 기능:
             1. 회비 납부 현황 조회
@@ -38,6 +38,7 @@ public class ChatbotService {
             - 모르는 내용은 솔직히 모른다고 하세요
             - 불필요하게 길지 않게 답변하세요
             - 질문자는 40~50대 대상이므로 간단하고 명료하게 답변하세요
+            - 볼드체를 강조한다고 **문장** 형식으로 답변하지 말고 [문장] 와 같은 형식으로 강조할 것.
             """;
 
   public ChatResponseDto processMessage(Long groupId, String userMessage) {
@@ -94,7 +95,7 @@ public class ChatbotService {
       return new ChatResponseDto("모든 회원이 회비를 납부했습니다!", "text", null);
     }
 
-    StringBuilder response = new StringBuilder("**미납자 명단**\n\n");
+    StringBuilder response = new StringBuilder("미납자 명단\n\n");
     for (GroupMember member : unpaidMembers) {
       response.append(String.format("- %s (전화: %s)\n",
           member.getName(),
@@ -143,7 +144,7 @@ public class ChatbotService {
     double paymentRate = allPayments.isEmpty() ? 0 : (paidCount * 100.0 / allPayments.size());
 
     String response = String.format("""
-                **회비 납부 현황**
+                [회비 납부 현황]
                 
                 전체 회원: %d명
                 납부 완료: %d명
@@ -176,7 +177,7 @@ public class ChatbotService {
 
   private ChatResponseDto getHelpMessage() {
     String helpText = """
-                🤖 **오토피봇 사용 가이드**
+                🤖 [오토피봇 사용 가이드]
                 
                 💡 "미납자 알려줘"
                 💡 "회비 현황 보여줘"
