@@ -2,6 +2,8 @@ package com.example.capstonedesign20252.groupMember.domain;
 
 import com.example.capstonedesign20252.common.BaseEntity;
 import com.example.capstonedesign20252.group.domain.Group;
+import com.example.capstonedesign20252.groupMember.dto.AddGroupMemberDto;
+import com.example.capstonedesign20252.groupMember.dto.UpdateGroupMemberDto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -10,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,7 +31,6 @@ public class GroupMember extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   private Group group;
 
-  // 🔥 User 참조 제거! 멤버 정보를 직접 저장
   @Column(name = "name", nullable = false)
   private String name;
 
@@ -38,7 +40,6 @@ public class GroupMember extends BaseEntity {
   @Column(name = "phone")
   private String phone;
 
-  // 리더(그룹 생성자)인지 구분
   @Column(name = "is_admin", nullable = false)
   private Boolean isAdmin;
 
@@ -49,5 +50,11 @@ public class GroupMember extends BaseEntity {
     this.email = email;
     this.phone = phone;
     this.isAdmin = isAdmin != null ? isAdmin : false;
+  }
+
+  public void updateGroupMember(UpdateGroupMemberDto updateGroupMemberDto){
+    if(updateGroupMemberDto.name() != null) this.name = updateGroupMemberDto.name();
+    if(updateGroupMemberDto.email() != null) this.email = updateGroupMemberDto.email();
+    if(updateGroupMemberDto.phone() != null) this.phone = updateGroupMemberDto.phone();
   }
 }
