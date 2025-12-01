@@ -199,17 +199,34 @@ public class ChatbotService {
 
     response.append(String.format("\n총 %d명 미납", pendingMembers.size() + overdueMembers.size()));
 
-    // 데이터도 함께 반환
-    List<GroupMember> allUnpaid = new ArrayList<>();
-    allUnpaid.addAll(overdueMembers);
-    allUnpaid.addAll(pendingMembers);
+    // ✅ 엔티티를 직접 반환하지 않고, 필요한 정보만 Map으로 변환
+    List<Map<String, Object>> overdueList = overdueMembers.stream()
+                                                          .map(m -> {
+                                                            Map<String, Object> map = new HashMap<>();
+                                                            map.put("id", m.getId());
+                                                            map.put("name", m.getName());
+                                                            map.put("phone", m.getPhone());
+                                                            return map;
+                                                          })
+                                                          .collect(Collectors.toList());
 
-    return new ChatResponseDto(response.toString(), "list", Map.of(
-        "period", currentPeriod,
-        "overdueMembers", overdueMembers,
-        "pendingMembers", pendingMembers,
-        "totalUnpaid", allUnpaid.size()
-    ));
+    List<Map<String, Object>> pendingList = pendingMembers.stream()
+                                                          .map(m -> {
+                                                            Map<String, Object> map = new HashMap<>();
+                                                            map.put("id", m.getId());
+                                                            map.put("name", m.getName());
+                                                            map.put("phone", m.getPhone());
+                                                            return map;
+                                                          })
+                                                          .collect(Collectors.toList());
+
+    Map<String, Object> resultData = new HashMap<>();
+    resultData.put("period", currentPeriod);
+    resultData.put("overdueMembers", overdueList);
+    resultData.put("pendingMembers", pendingList);
+    resultData.put("totalUnpaid", overdueMembers.size() + pendingMembers.size());
+
+    return new ChatResponseDto(response.toString(), "list", resultData);
   }
 
   /**
@@ -226,15 +243,20 @@ public class ChatbotService {
     String currentPeriod = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
     List<Payment> payments = paymentRepository.findByGroupIdAndPaymentPeriod(groupId, currentPeriod);
 
-    // PAID 상태인 Payment의 멤버 정보 추출
+    // PAID 상태인 Payment의 멤버 정보 추출 (엔티티 직접 반환 X)
     List<Map<String, Object>> paidList = payments.stream()
                                                  .filter(p -> "PAID".equals(p.getStatus()))
-                                                 .map(p -> Map.<String, Object>of(
-                                                     "name", p.getGroupMember().getName(),
-                                                     "phone", p.getGroupMember().getPhone(),
-                                                     "amount", p.getAmount(),
-                                                     "paidAt", p.getPaidAt() != null ? p.getPaidAt() : LocalDateTime.now()
-                                                 ))
+                                                 .map(p -> {
+                                                   Map<String, Object> map = new HashMap<>();
+                                                   map.put("name", p.getGroupMember().getName());
+                                                   map.put("phone", p.getGroupMember().getPhone());
+                                                   map.put("amount", p.getAmount());
+                                                   // LocalDateTime을 문자열로 변환
+                                                   map.put("paidAt", p.getPaidAt() != null
+                                                       ? p.getPaidAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                                                       : null);
+                                                   return map;
+                                                 })
                                                  .collect(Collectors.toList());
 
     if (paidList.isEmpty()) {
@@ -249,21 +271,24 @@ public class ChatbotService {
     response.append(String.format("[%s 납부 완료자]\n\n", currentPeriod));
 
     for (Map<String, Object> paid : paidList) {
-      Object paidAtObj = paid.get("paidAt");
+      String paidAt = (String) paid.get("paidAt");
       String paidDate = "";
-      if (paidAtObj instanceof LocalDateTime) {
-        paidDate = ((LocalDateTime) paidAtObj).format(DateTimeFormatter.ofPattern("M/d HH:mm"));
+      if (paidAt != null) {
+        // "yyyy-MM-dd HH:mm:ss" 형식에서 "M/d HH:mm" 형식으로 변환
+        LocalDateTime dateTime = LocalDateTime.parse(paidAt, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        paidDate = dateTime.format(DateTimeFormatter.ofPattern("M/d HH:mm"));
       }
       response.append(String.format("✅ %s - %s\n", paid.get("name"), paidDate));
     }
 
     response.append(String.format("\n총 %d명 납부 완료", paidList.size()));
 
-    return new ChatResponseDto(response.toString(), "list", Map.of(
-        "period", currentPeriod,
-        "paidMembers", paidList,
-        "totalPaid", paidList.size()
-    ));
+    Map<String, Object> resultData = new HashMap<>();
+    resultData.put("period", currentPeriod);
+    resultData.put("paidMembers", paidList);
+    resultData.put("totalPaid", paidList.size());
+
+    return new ChatResponseDto(response.toString(), "list", resultData);
   }
 
   /**
