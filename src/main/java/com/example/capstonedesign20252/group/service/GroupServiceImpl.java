@@ -1,5 +1,6 @@
 package com.example.capstonedesign20252.group.service;
 
+import com.example.capstonedesign20252.dashboard.DashboardRepository;
 import com.example.capstonedesign20252.group.domain.Group;
 import com.example.capstonedesign20252.group.domain.GroupErrorCode;
 import com.example.capstonedesign20252.group.domain.GroupException;
@@ -9,6 +10,8 @@ import com.example.capstonedesign20252.group.dto.createGroupRequestDto;
 import com.example.capstonedesign20252.group.repository.GroupRepository;
 import com.example.capstonedesign20252.groupMember.domain.GroupMember;
 import com.example.capstonedesign20252.groupMember.repository.GroupMemberRepository;
+import com.example.capstonedesign20252.payment.repository.PaymentRepository;
+import com.example.capstonedesign20252.paymentCycle.repository.PaymentCycleRepository;
 import com.example.capstonedesign20252.user.domain.User;
 import com.example.capstonedesign20252.user.exception.UserErrorCode;
 import com.example.capstonedesign20252.user.exception.UserException;
@@ -28,6 +31,9 @@ public class GroupServiceImpl implements GroupService {
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
   private final GroupMemberRepository groupMemberRepository;
+  private final PaymentRepository paymentRepository;
+  private final PaymentCycleRepository paymentCycleRepository;
+  private final DashboardRepository dashboardRepository;
 
   @Transactional
   public GroupResponseDto createGroup(Long userId, createGroupRequestDto dto) {
@@ -89,6 +95,10 @@ public class GroupServiceImpl implements GroupService {
     Group group = groupRepository.findById(groupId)
         .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
+    paymentRepository.deleteAllByGroupId(groupId);
+    groupMemberRepository.deleteAllByGroupId(groupId);
+    paymentCycleRepository.deleteAllByGroupId(groupId);
+    dashboardRepository.deleteAllByGroupId(groupId);
     groupRepository.delete(group);
   }
 

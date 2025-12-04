@@ -58,6 +58,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
   @Query("DELETE FROM Payment p WHERE p.groupMember.id = :memberId")
   void deleteAllByGroupMemberId(@Param("memberId") Long memberId);
 
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("DELETE FROM Payment p WHERE p.group.id = :groupId")
+  void deleteAllByGroupId(@Param("groupId") Long groupId);
+
 
   long countByGroupMemberId(Long groupMemberId);
 }

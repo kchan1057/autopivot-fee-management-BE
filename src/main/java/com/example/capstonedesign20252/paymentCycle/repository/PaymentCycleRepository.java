@@ -4,6 +4,7 @@ import com.example.capstonedesign20252.paymentCycle.domain.PaymentCycle;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -23,4 +24,8 @@ public interface PaymentCycleRepository extends JpaRepository<PaymentCycle, Long
 
   @Query("SELECT pc FROM PaymentCycle pc WHERE pc.group.id = :groupId ORDER BY pc.createdAt DESC")
   List<PaymentCycle> findRecentByGroupId(@Param("groupId") Long groupId);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("DELETE FROM PaymentCycle pc WHERE pc.group.id = :groupId")
+  void deleteAllByGroupId(@Param("groupId") Long groupId);
 }
