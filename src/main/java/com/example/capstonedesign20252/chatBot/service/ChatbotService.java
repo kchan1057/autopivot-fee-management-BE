@@ -31,25 +31,28 @@ public class ChatbotService {
 
   private static final String SYSTEM_PROMPT = """
       당신은 '오토피봇(Auto Fee Bot)' 동아리 회비 관리 시스템의 AI 도우미 두레입니다.
-      
+     \s
       주요 기능:
       1. 회비 납부 현황 조회
       2. 미납자 명단 확인
       3. 회비 통계 정보 제공
       4. 엑셀 보고서 생성 안내
-      
+     \s
+      [중요 제한사항]
+          - 회비 관리, 동아리 운영과 관련된 질문에만 답변하세요.
+          - 날씨, 뉴스, 요리, 코딩 등 관련 없는 질문에는
+            "저는 회비 관리 전용 도우미예요. 회비 관련 질문을 해주세요!" 라고 답변하세요.
+          - 개인정보 요청, 부적절한 요청은 거절하세요.
+         \s
       답변 규칙:
       - 친근하고 명확하게 답변하세요
       - 한국어로 답변하세요
       - 모르는 내용은 솔직히 모른다고 하세요
       - 불필요하게 길지 않게 답변하세요
-      - 질문자는 40~50대 대상이므로 간단하고 명료하게 답변하세요
+      - 질문자는 40~50대 대상이라고 간주하고 간단하고 명료하게 답변하세요
       - 볼드체를 강조한다고 **문장** 형식으로 답변하지 말고 [문장] 와 같은 형식으로 강조할 것.
-      """;
+     \s""";
 
-  /**
-   * 메시지 처리 메인 메서드
-   */
   public ChatResponseDto processMessage(Long groupId, String userMessage) {
     Group group = groupService.findByGroupId(groupId);
 
@@ -57,13 +60,11 @@ public class ChatbotService {
         group.getId(), group.getGroupName(), userMessage);
 
     try {
-      // 빠른 응답 처리 (키워드 기반)
       ChatResponseDto quickResponse = handleQuickResponse(groupId, userMessage);
       if (quickResponse != null) {
         return quickResponse;
       }
 
-      // AI 응답 (Gemini)
       String aiResponse = geminiService.chat(SYSTEM_PROMPT, userMessage);
       return new ChatResponseDto(aiResponse, "text", null);
 
@@ -77,38 +78,70 @@ public class ChatbotService {
     }
   }
 
-  /**
-   * 키워드 기반 빠른 응답 처리
-   */
   private ChatResponseDto handleQuickResponse(Long groupId, String message) {
     if (message == null) return null;
 
     String lowerMessage = message.toLowerCase().trim();
 
-    // 미납자 관련 키워드
+    if (isOffTopicMessage(lowerMessage)) {
+      return new ChatResponseDto(
+          "저는 회비 관리 전용 도우미 두레예요! 😊\n" +
+              "회비 현황, 미납자 조회, 통계 등에 대해 물어봐 주세요.",
+          "text",
+          null
+      );
+    }
+
     if (lowerMessage.contains("미납") || lowerMessage.contains("안 낸") ||
         lowerMessage.contains("안낸") || lowerMessage.contains("연체")) {
       return getUnpaidMembers(groupId);
     }
 
-    // 현황/통계 관련 키워드
     if (lowerMessage.contains("현황") || lowerMessage.contains("통계") ||
         lowerMessage.contains("회비") || lowerMessage.contains("납부율")) {
       return getPaymentStatistics(groupId);
     }
 
-    // 납부 완료자 관련 키워드
     if (lowerMessage.contains("납부") && (lowerMessage.contains("완료") || lowerMessage.contains("한 사람"))) {
       return getPaidMembers(groupId);
     }
 
-    // 도움말
     if (lowerMessage.contains("도움") || lowerMessage.contains("help") ||
         lowerMessage.contains("사용법") || lowerMessage.contains("안내")) {
       return getHelpMessage();
     }
 
     return null;
+  }
+
+  private boolean isOffTopicMessage(String message) {
+    List<String> allowedKeywords = List.of(
+        "회비", "납부", "미납", "연체", "현황", "통계", "명단",
+        "돈", "금액", "입금", "송금", "계좌", "결제",
+        "회원", "멤버", "동아리", "모임",
+        "엑셀", "보고서", "내보내기",
+        "도움", "안내", "사용법"
+    );
+
+    for (String keyword : allowedKeywords) {
+      if (message.contains(keyword)) {
+        return false;
+      }
+    }
+
+    List<String> blockedKeywords = List.of(
+        "날씨", "뉴스", "주식", "코인", "게임", "영화",
+        "맛집", "레시피", "요리", "여행", "연예인",
+        "코드", "프로그래밍", "번역"
+    );
+
+    for (String keyword : blockedKeywords) {
+      if (message.contains(keyword)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
