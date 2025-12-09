@@ -21,7 +21,7 @@ public class GeminiService {
   private String apiKey;
 
   private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-  private static final String MODEL_NAME = "gemini-2.0-flash";
+  private static final String MODEL_NAME = "gemini-2.5-flash";
 
   private final WebClient webClient;
   private final ObjectMapper objectMapper;

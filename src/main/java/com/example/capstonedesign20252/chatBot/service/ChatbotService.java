@@ -97,8 +97,14 @@ public class ChatbotService {
       return getUnpaidMembers(groupId);
     }
 
-    if (lowerMessage.contains("현황") || lowerMessage.contains("통계") ||
-        lowerMessage.contains("회비") || lowerMessage.contains("납부율")) {
+    // 단순 회비 금액 조회 (통계보다 먼저 체크)
+    if ((lowerMessage.contains("이번") || lowerMessage.contains("월") || lowerMessage.contains("얼마")) &&
+        lowerMessage.contains("회비") &&
+        !lowerMessage.contains("현황") && !lowerMessage.contains("통계")) {
+      return getMonthlyFeeInfo(groupId);
+    }
+
+    if (lowerMessage.contains("현황") || lowerMessage.contains("통계") || lowerMessage.contains("납부율")) {
       return getPaymentStatistics(groupId);
     }
 
@@ -142,6 +148,26 @@ public class ChatbotService {
     }
 
     return false;
+  }
+
+  /**
+   * 이번 달 회비 금액 안내
+   */
+  private ChatResponseDto getMonthlyFeeInfo(Long groupId) {
+    Group group = groupService.findByGroupId(groupId);
+    String currentPeriod = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy년 M월"));
+
+    String response = String.format(
+        "%s 회비는 %,d원입니다.",
+        currentPeriod,
+        group.getFee()
+    );
+
+    Map<String, Object> data = new HashMap<>();
+    data.put("fee", group.getFee());
+    data.put("period", currentPeriod);
+
+    return new ChatResponseDto(response, "text", data);
   }
 
   /**
